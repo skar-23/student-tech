@@ -25,4 +25,3 @@ export default defineConfig(({ mode }) => ({
   },
 }));
 
-bun run build
