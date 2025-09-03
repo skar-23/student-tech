@@ -28,59 +28,71 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await useAuth().signInWithEmail(email, password);
 
-    if (error) {
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully signed in.',
+        });
+      }
+    } catch (err) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
-    } else {
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in.',
-      });
+      console.error('Sign in error:', err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    try {
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      const userData = {
+        full_name: fullName,
+        username: username,
+        email: email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          username: username,
-        },
-      },
-    });
+      const { error } = await useAuth().signUpWithEmail(email, password, userData);
 
-    if (error) {
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Account created!',
+          description: 'Please check your email to verify your account.',
+        });
+      }
+    } catch (err) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: 'An unexpected error occurred during sign up. Please try again.',
         variant: 'destructive',
       });
-    } else {
-      toast({
-        title: 'Account created!',
-        description: 'Please check your email to verify your account.',
-      });
+      console.error('Sign up error:', err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (authLoading) {

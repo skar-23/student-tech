@@ -17,9 +17,9 @@ const Index = () => {
     );
   }
 
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // Remove automatic redirection to dashboard
+  // Allow users to see the landing page even when authenticated
+  // They can navigate to dashboard using the navbar
 
   return (
     <div className="min-h-screen">

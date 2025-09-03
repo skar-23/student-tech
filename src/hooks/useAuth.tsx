@@ -7,6 +7,8 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUpWithEmail: (email: string, password: string, userData?: any) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,8 +42,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } catch (error) {
+      console.error('Error signing in:', error);
+      return { error: error as Error };
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string, userData?: any) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData,
+        },
+      });
+      
+      if (!error && userData) {
+        // Create profile entry after successful signup
+        await supabase.from('profiles').upsert({
+          id: (await supabase.auth.getUser()).data.user?.id,
+          ...userData,
+          updated_at: new Date().toISOString(),
+        });
+      }
+      
+      return { error };
+    } catch (error) {
+      console.error('Error signing up:', error);
+      return { error: error as Error };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      signOut,
+      signInWithEmail,
+      signUpWithEmail
+    }}>
       {children}
     </AuthContext.Provider>
   );

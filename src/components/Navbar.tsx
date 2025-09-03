@@ -52,6 +52,10 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
+              <Link to="/dashboard">
+                <Button variant="ghost">Dashboard</Button>
+              </Link>
+              
               <Link to="/qbank">
                 <Button variant="ghost">Q-Bank</Button>
               </Link>
