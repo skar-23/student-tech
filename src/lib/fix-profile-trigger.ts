@@ -1,80 +1,107 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * This function fixes the profile creation trigger to include email
- * and updates existing profiles that are missing emails.
+ * This function provides a client-side check and fix for profile issues.
+ * Note: Database trigger and schema changes must be done through migrations.
+ * 
+ * This function can be used to manually fix user profiles that are missing
+ * emails due to the trigger issue.
  */
 export async function fixProfileTrigger() {
   try {
-    console.log('🔧 Starting profile trigger fix...');
+    console.log('🔧 Starting profile trigger fix check...');
     
-    // Step 1: Check if email column exists in profiles table, add if it doesn't
-    const { error: columnError } = await supabase.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name = 'profiles' 
-                      AND column_name = 'email') THEN
-            ALTER TABLE public.profiles ADD COLUMN email TEXT;
-            RAISE NOTICE 'Added email column to profiles table';
-        ELSE
-            RAISE NOTICE 'Email column already exists in profiles table';
-        END IF;
-      END
-      $$;
-    `);
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (columnError) {
-      console.error('Error checking/adding email column:', columnError);
-      return { success: false, message: 'Failed to check/add email column' };
-    }
-    
-    // Step 2: Update the trigger function to include email
-    const { error: functionError } = await supabase.query(`
-      CREATE OR REPLACE FUNCTION public.handle_new_user()
-      RETURNS TRIGGER AS $$
-      BEGIN
-        INSERT INTO public.profiles (id, username, full_name, avatar_url, email)
-        VALUES (
-          NEW.id,
-          NEW.raw_user_meta_data->>'username',
-          NEW.raw_user_meta_data->>'full_name',
-          NEW.raw_user_meta_data->>'avatar_url',
-          NEW.email  -- Add email from auth.users
-        );
-        RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql SECURITY DEFINER;
-    `);
-    
-    if (functionError) {
-      console.error('Error updating trigger function:', functionError);
-      return { success: false, message: 'Failed to update trigger function' };
-    }
-    
-    // Step 3: Fix existing profiles that are missing emails
-    const { error: updateError } = await supabase.query(`
-      UPDATE public.profiles 
-      SET email = auth.users.email,
-          updated_at = NOW()
-      FROM auth.users 
-      WHERE public.profiles.id = auth.users.id 
-      AND (public.profiles.email IS NULL OR public.profiles.email = '');
-    `);
-    
-    if (updateError) {
-      console.error('Error updating existing profiles:', updateError);
-      return { 
-        success: false, 
-        message: 'Updated trigger function but failed to update existing profiles' 
+    if (userError || !user) {
+      return {
+        success: false,
+        message: 'User not authenticated. Please sign in first.'
       };
     }
-    
-    console.log('✅ Profile trigger fix completed successfully');
-    return { 
-      success: true, 
-      message: 'Successfully updated trigger function and fixed existing profiles' 
+
+    console.log('👤 Checking profile for user:', user.email);
+
+    // Check if user has a profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, username, full_name, avatar_url')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      if (profileError.code === 'PGRST116') {
+        // No profile found, create one
+        console.log('📝 No profile found, creating profile...');
+        
+        const { error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            username: user.user_metadata?.username || null,
+            full_name: user.user_metadata?.full_name || null,
+            avatar_url: user.user_metadata?.avatar_url || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (createError) {
+          console.error('❌ Error creating profile:', createError);
+          return {
+            success: false,
+            message: `Failed to create profile: ${createError.message}`
+          };
+        }
+
+        console.log('✅ Profile created successfully');
+        return {
+          success: true,
+          message: 'Profile created successfully with email'
+        };
+      } else {
+        console.error('❌ Error checking profile:', profileError);
+        return {
+          success: false,
+          message: `Error checking profile: ${profileError.message}`
+        };
+      }
+    }
+
+    // Profile exists, check if it needs email update
+    if (!profile.email && user.email) {
+      console.log('📧 Profile missing email, updating...');
+      
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          email: user.email,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('❌ Error updating profile email:', updateError);
+        return {
+          success: false,
+          message: `Failed to update profile email: ${updateError.message}`
+        };
+      }
+
+      console.log('✅ Profile email updated');
+      return {
+        success: true,
+        message: 'Profile email updated successfully'
+      };
+    }
+
+    console.log('✅ Profile is already correctly configured');
+    return {
+      success: true,
+      message: 'Profile is already correctly configured'
     };
+
   } catch (error) {
     console.error('Error in fixProfileTrigger:', error);
     return { 
