@@ -26,6 +26,12 @@ If emails are not showing up in the profiles table:
 1. Run the SQL script in Supabase SQL Editor: `database/fix_email_column.sql`
 2. This will add the email column if missing, update the trigger function, and fix existing profiles
 
+#### 🔧 **Fixing Database Signup Error** 
+If users get database errors when signing up:
+1. Run: `npm run fix-signup-error` to see the SQL fix
+2. Copy the SQL output and run it in your Supabase SQL Editor
+3. This fixes the `handle_new_user()` trigger function to include required fields
+
 ### 🚀 **Core Functionality**
 - **AI-Powered Roadmaps**: Personalized learning paths
 - **Note Sharing Hub**: Collaborative study materials

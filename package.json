@@ -12,7 +12,8 @@
     "genkit:dev": "genkit start -- npx tsx src/lib/ai/dev.ts",
     "genkit:watch": "genkit start -- npx tsx --watch src/lib/ai/dev.ts",
     "fix-profile-emails": "node ./scripts/run-fix-profile-emails.js",
-    "fix-profile-trigger": "node ./scripts/run-fix-profile-trigger.js"
+    "fix-profile-trigger": "node ./scripts/run-fix-profile-trigger.js",
+    "fix-signup-error": "node ./scripts/apply-database-fix.js"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.18.0",
