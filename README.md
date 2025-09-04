@@ -178,15 +178,95 @@ The system includes professionally designed email templates:
 
 ## 🌐 Deployment
 
-### Vercel (Recommended)
+### 🚨 Security Notice
+**IMPORTANT**: The current implementation exposes the Resend API key in client-side code, which is not secure for production. See security recommendations below.
+
+### GitHub Pages (Current Setup)
+Your repository is already configured for GitHub Pages deployment with automatic builds.
+
+**Current Status**: ✅ Ready to deploy
+
+**What's already set up:**
+- GitHub Actions workflow (`.github/workflows/deploy.yml`)
+- Automatic building on push to `main` branch
+- Environment variables integration
+
+### Step-by-Step Deployment Process
+
+#### 1. Set up GitHub Secrets
+Go to your repository settings → Secrets and Variables → Actions, and add:
+- `VITE_SUPABASE_URL`: Your Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY`: Your Supabase public key
+- `VITE_RESEND_API_KEY`: Your Resend API key
+
+#### 2. Merge Your Changes to Main Branch
+Since you're currently on a feature branch, follow these exact steps:
+
+```bash
+# 1. Switch to main branch
+git checkout main
+
+# 2. Pull latest changes
+git pull origin main
+
+# 3. Merge your feature branch
+git merge copilot/fix-08d19295-8934-42da-b328-85a8d87acb66
+
+# 4. Push to main (this will trigger deployment)
+git push origin main
+```
+
+#### 3. Enable GitHub Pages
+1. Go to your repository → Settings → Pages
+2. Under "Source", select "GitHub Actions"
+3. Your site will be deployed automatically
+
+#### 4. Monitor Deployment
+- Check the Actions tab for deployment progress
+- Your site will be available at: `https://skar-23.github.io/student-tech/`
+
+### Alternative Deployment Options
+
+#### Vercel (Recommended for Security)
 1. Connect your GitHub repository to Vercel
-2. Add environment variables in Vercel dashboard
+2. Add environment variables in Vercel dashboard:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - `VITE_RESEND_API_KEY`
 3. Deploy automatically on push to main branch
 
-### Netlify
+#### Netlify
 1. Build command: `npm run build`
 2. Publish directory: `dist`
 3. Add environment variables in Netlify dashboard
+
+### 🔐 Security Recommendations
+
+#### Current Security Issue
+The Resend API key is currently exposed in client-side code because of the `VITE_` prefix. This means anyone can view your API key in the browser's developer tools.
+
+#### Recommended Solutions (Choose One)
+
+**Option 1: Supabase Edge Functions (Recommended)**
+```sql
+-- Create an edge function for secure email sending
+CREATE OR REPLACE FUNCTION send_password_reset_email(email TEXT, code TEXT)
+RETURNS JSON AS $$
+-- Move email logic to server-side
+$$ LANGUAGE plpgsql;
+```
+
+**Option 2: Vercel Serverless Functions**
+Create `/api/send-email.ts` for secure email handling.
+
+**Option 3: Netlify Functions**
+Create `/netlify/functions/send-email.ts` for secure email handling.
+
+#### Immediate Security Steps
+1. ✅ Rotate your Resend API key after deployment
+2. ✅ Monitor API usage in Resend dashboard
+3. ✅ Implement rate limiting
+4. 🔄 Plan migration to server-side email sending
 
 ## 🤝 Contributing
 
