@@ -37,6 +37,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_RESEND_API_KEY: ${{ secrets.VITE_RESEND_API_KEY }}
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

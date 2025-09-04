@@ -1,5 +1,14 @@
 import { Resend } from 'resend';
 
+// ⚠️ SECURITY WARNING: VITE_ prefixed environment variables are exposed in client-side code!
+// This makes the API key publicly visible in the browser and is NOT secure.
+// 
+// RECOMMENDED SOLUTIONS:
+// 1. Move email sending to Supabase Edge Functions
+// 2. Use Vercel/Netlify serverless functions
+// 3. Implement server-side email handling
+//
+// For now, this works for development but should NOT be used in production!
 const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
 
 export interface SendPasswordResetEmailParams {
