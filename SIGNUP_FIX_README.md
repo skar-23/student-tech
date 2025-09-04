@@ -127,29 +127,39 @@ The following application-level changes have been made to provide fallback funct
 2. Run `npm run fix-profile-emails` to fix current user's profile
 3. This only fixes individual profiles, not the underlying trigger
 
-## Verification
+## Testing the Fix
 
-After applying the fix, you can verify it's working by:
+### Automated Validation
+Run the test script to validate the implementation:
+```bash
+node scripts/test-signup-fix.mjs
+```
 
-1. **Testing Signup**: Try creating a new user account
-2. **Checking Database**: Run this query in Supabase SQL Editor:
-   ```sql
-   SELECT 
-       p.id,
-       p.email as profile_email,
-       u.email as auth_email,
-       p.full_name,
-       p.username,
-       CASE 
-           WHEN p.email IS NULL OR p.email = '' THEN 'NEEDS EMAIL'
-           WHEN p.email = u.email THEN 'OK'
-           ELSE 'MISMATCH'
-       END as status
-   FROM public.profiles p
-   LEFT JOIN auth.users u ON p.id = u.id
-   ORDER BY p.created_at DESC
-   LIMIT 10;
+This script checks:
+- ✅ Migration file exists with correct content
+- ✅ Auth hook has fallback logic
+- ✅ Fix functions use proper Supabase client methods
+- ✅ Documentation is present
+
+### Manual Testing (After Database Migration)
+1. **Test Signup Flow**:
+   - Go to `/auth` page
+   - Switch to "Sign Up" tab
+   - Fill in: Full Name, Username, Email, Password
+   - Submit form
+   - Should complete without 500 error
+
+2. **Check Console Logs**:
    ```
+   📝 Profile will be created automatically by database trigger
+   📧 User email: user@example.com
+   📄 User data: Object
+   ```
+
+3. **Verify Database**:
+   - Check `profiles` table has new record
+   - Verify `email` column is populated
+   - Confirm no missing data
 
 ## Files Changed
 
