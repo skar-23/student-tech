@@ -112,76 +112,6 @@ export type Database = {
         }
         Relationships: []
       }
-      roadmap_modules: {
-        Row: {
-          created_at: string
-          id: number
-          order_index: number
-          roadmap_id: number
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          order_index: number
-          roadmap_id: number
-          title: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          order_index?: number
-          roadmap_id?: number
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "roadmap_modules_roadmap_id_fkey"
-            columns: ["roadmap_id"]
-            isOneToOne: false
-            referencedRelation: "roadmaps"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      roadmap_topics: {
-        Row: {
-          created_at: string
-          id: number
-          module_id: number
-          order_index: number
-          resource_type: string | null
-          resource_url: string | null
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          module_id: number
-          order_index: number
-          resource_type?: string | null
-          resource_url?: string | null
-          title: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          module_id?: number
-          order_index?: number
-          resource_type?: string | null
-          resource_url?: string | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "roadmap_topics_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "roadmap_modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       roadmaps: {
         Row: {
           created_at: string
@@ -210,29 +140,19 @@ export type Database = {
         Row: {
           completed_at: string
           id: number
-          topic_id: number
           user_id: string
         }
         Insert: {
           completed_at?: string
           id?: number
-          topic_id: number
           user_id: string
         }
         Update: {
           completed_at?: string
           id?: number
-          topic_id?: number
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "user_progress_topic_id_fkey"
-            columns: ["topic_id"]
-            isOneToOne: false
-            referencedRelation: "roadmap_topics"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "user_progress_user_id_fkey"
             columns: ["user_id"]

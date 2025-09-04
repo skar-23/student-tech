@@ -18,33 +18,12 @@ CREATE TABLE public.roadmaps (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create roadmap_modules table
-CREATE TABLE public.roadmap_modules (
-  id SERIAL PRIMARY KEY,
-  roadmap_id INTEGER NOT NULL REFERENCES public.roadmaps(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  order_index INTEGER NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-
--- Create roadmap_topics table
-CREATE TABLE public.roadmap_topics (
-  id SERIAL PRIMARY KEY,
-  module_id INTEGER NOT NULL REFERENCES public.roadmap_modules(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  resource_url TEXT,
-  resource_type TEXT CHECK (resource_type IN ('Video', 'Article', 'Practice')),
-  order_index INTEGER NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
 
 -- Create user_progress table
 CREATE TABLE public.user_progress (
   id SERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  topic_id INTEGER NOT NULL REFERENCES public.roadmap_topics(id) ON DELETE CASCADE,
-  completed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  UNIQUE(user_id, topic_id)
+  completed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
 -- Create notes table
@@ -72,8 +51,6 @@ CREATE TABLE public.question_bank (
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.roadmaps ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.roadmap_modules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.roadmap_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.question_bank ENABLE ROW LEVEL SECURITY;
@@ -96,15 +73,6 @@ CREATE POLICY "Roadmaps are viewable by everyone"
 ON public.roadmaps FOR SELECT 
 USING (true);
 
--- Create RLS policies for roadmap_modules (public read)
-CREATE POLICY "Roadmap modules are viewable by everyone" 
-ON public.roadmap_modules FOR SELECT 
-USING (true);
-
--- Create RLS policies for roadmap_topics (public read)
-CREATE POLICY "Roadmap topics are viewable by everyone" 
-ON public.roadmap_topics FOR SELECT 
-USING (true);
 
 -- Create RLS policies for user_progress
 CREATE POLICY "Users can view their own progress" 
@@ -191,20 +159,6 @@ INSERT INTO public.roadmaps (title, description, domain) VALUES
 ('Machine Learning Basics', 'Introduction to ML concepts and implementation', 'ML'),
 ('System Design Fundamentals', 'Learn how to design scalable systems', 'System Design');
 
--- Insert sample modules for Full Stack roadmap
-INSERT INTO public.roadmap_modules (roadmap_id, title, order_index) VALUES
-(1, 'HTML & CSS Fundamentals', 1),
-(1, 'JavaScript Essentials', 2),
-(1, 'React Development', 3),
-(1, 'Backend with Node.js', 4),
-(1, 'Database Design', 5);
-
--- Insert sample topics for HTML & CSS module
-INSERT INTO public.roadmap_topics (module_id, title, resource_url, resource_type, order_index) VALUES
-(1, 'HTML Basics', 'https://developer.mozilla.org/en-US/docs/Web/HTML', 'Article', 1),
-(1, 'CSS Fundamentals', 'https://developer.mozilla.org/en-US/docs/Web/CSS', 'Article', 2),
-(1, 'Flexbox Layout', 'https://flexboxfroggy.com/', 'Practice', 3),
-(1, 'CSS Grid', 'https://cssgridgarden.com/', 'Practice', 4);
 
 -- Insert sample questions
 INSERT INTO public.question_bank (question_text, solution, topic, difficulty) VALUES

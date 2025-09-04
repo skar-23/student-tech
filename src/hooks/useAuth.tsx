@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -57,24 +57,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string, userData?: any) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: userData,
         },
       });
+
+      // Profile creation is now handled automatically by the database trigger
+      // The trigger function 'handle_new_user()' will create the profile with email
+      console.log('📝 Profile will be created automatically by database trigger');
+      console.log('📧 User email:', email);
+      console.log('📄 User data:', userData);
       
-      if (!error && userData) {
-        // Create profile entry after successful signup
-        await supabase.from('profiles').upsert({
-          id: (await supabase.auth.getUser()).data.user?.id,
-          ...userData,
-          updated_at: new Date().toISOString(),
-        });
-      }
-      
-      return { error };
+      return { error: error as Error | null };
     } catch (error) {
       console.error('Error signing up:', error);
       return { error: error as Error };

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Map, FileText, Upload } from 'lucide-react';
+import { Home, Map, FileText, Upload, Brain, Target } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -14,8 +14,9 @@ import {
 
 const items = [
   { title: 'Dashboard', url: '/dashboard', icon: Home },
-  { title: 'Roadmaps', url: '/roadmaps', icon: Map },
-  { title: 'Notes', url: '/notes', icon: FileText },
+  { title: 'AI Roadmaps', url: '/roadmaps', icon: Map },
+  { title: 'Smart Practice', url: '/practice', icon: Brain },
+  { title: 'Notes Hub', url: '/notes', icon: FileText },
   { title: 'Upload Note', url: '/upload', icon: Upload },
 ];
 
