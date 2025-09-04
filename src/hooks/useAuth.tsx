@@ -65,11 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      // Profile creation is now handled automatically by the database trigger
+      // Profile creation is handled automatically by the database trigger
       // The trigger function 'handle_new_user()' will create the profile with email
-      console.log('📝 Profile will be created automatically by database trigger');
-      console.log('📧 User email:', email);
-      console.log('📄 User data:', userData);
       
       return { error: error as Error | null };
     } catch (error) {

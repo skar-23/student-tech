@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { sendPasswordResetEmail } from '@/lib/email/resend-service';
+import { sendPasswordResetEmailSecure } from '@/lib/email/email-api';
 
 // Types for password reset flow
 export interface PasswordResetRequest {
@@ -33,14 +33,11 @@ const generateVerificationCode = (): string => {
 // Send verification code to email
 export const sendVerificationCode = async (email: string): Promise<{ success: boolean; message: string; requestId?: string }> => {
   try {
-    // First, verify if the email is registered
+    // Verify if the email is registered
     let isRegistered = false;
     
-    // Multiple methods to check if email is registered
     try {
-      console.log(`🔍 Checking if email ${email} is registered...`);
-      
-      // Method 1: Check profiles table (if emails are populated)
+      // Check profiles table first (primary method)
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('email, id')
@@ -49,11 +46,8 @@ export const sendVerificationCode = async (email: string): Promise<{ success: bo
       
       if (!profileError && profiles && profiles.length > 0) {
         isRegistered = true;
-        console.log('✅ Found email in profiles table');
       } else {
-        console.log('❌ Email not found in profiles table, checking auth.users...');
-        
-        // Method 2: Check auth.users table via admin API
+        // Fallback: Check auth.users table
         try {
           const { data: { users }, error: authError } = await supabase.auth.admin.listUsers();
           
@@ -64,105 +58,69 @@ export const sendVerificationCode = async (email: string): Promise<{ success: bo
             
             if (userExists) {
               isRegistered = true;
-              console.log('✅ Found email in auth.users table');
-            } else {
-              console.log('❌ Email not found in auth.users table either');
             }
           }
         } catch (authError) {
-          console.log('⚠️ Cannot access auth.users, checking existing users...');
-          
-          // Method 3: Fallback - check if any profiles exist (for development)
-          const { data: anyProfiles } = await supabase
-            .from('profiles')
-            .select('id')
-            .limit(1);
-          
-          if (anyProfiles && anyProfiles.length > 0) {
-            // For development: if profiles exist, assume user might be valid
-            console.log('⚠️ Development mode: Profiles table has users, allowing reset');
-            isRegistered = true;
-          }
+          // If admin API fails, user is not registered
+          isRegistered = false;
         }
       }
       
-      console.log(`📧 Final verification result: ${isRegistered ? 'REGISTERED' : 'NOT REGISTERED'}`);
-      
     } catch (e) {
       console.error('Error in email verification:', e);
-      // For development, be permissive
-      console.warn('⚠️ Email verification failed completely, allowing for development');
-      isRegistered = true;
+      isRegistered = false;
     }
     
     // If email is not registered, return error message
     if (!isRegistered) {
       return {
         success: false,
-        message: 'This email is not registered with our platform. Please use your registered email address or create a new account.'
+        message: 'Email address not found. Please check your email and try again.'
       };
     }
     // Generate verification code
     const verificationCode = generateVerificationCode();
     
-    // Try to use existing Supabase function (fallback approach for development)
-    console.log('🔧 Using existing request_password_reset function (development mode)');
+    // Try to use existing Supabase function for password reset
     const { error } = await supabase.rpc('request_password_reset', {
       request_email: email.toLowerCase()
     });
-    
-    // Note: The existing function generates its own random code,
-    // but for development we'll use our sessionStorage approach
 
     if (error) {
-      // Handle duplicate key (existing active request): 409/23505
+      // Handle duplicate key (existing active request)
       const code = (error as any)?.code || (error as any)?.status;
       const details = (error as any)?.details || (error as any)?.message;
       const isDuplicate = code === 409 || code === '23505' || (typeof details === 'string' && details.toLowerCase().includes('already exists'));
       if (!isDuplicate) {
         console.error('Error creating password reset request:', error);
-        // For privacy, avoid revealing registration status
         return { success: false, message: 'If this email is registered, you will receive a verification code.' };
       }
-      // On duplicate: keep using a fresh code client-side for development
-      console.warn('Existing reset request found, reusing entry and issuing a new code (dev mode).');
     }
 
-    // Send the verification code via email using Resend
-    console.log(`📧 Sending verification code to ${email}...`);
-    
-    const emailResult = await sendPasswordResetEmail({
+    // Send the verification code via email
+    const emailResult = await sendPasswordResetEmailSecure({
       to: email,
       verificationCode: verificationCode,
       expiryMinutes: 15
     });
     
-    // Store the code in sessionStorage as fallback for development
+    // Store the code in sessionStorage for verification
     if (typeof window !== 'undefined') {
       sessionStorage.setItem(`reset_code_${email.toLowerCase()}`, verificationCode);
-      // Also store expiry time
       const expiryTime = Date.now() + (15 * 60 * 1000); // 15 minutes
       sessionStorage.setItem(`reset_code_expiry_${email.toLowerCase()}`, expiryTime.toString());
     }
     
-    // Also log to console for development/debugging
-    console.log(`🔑 Verification code for ${email}: ${verificationCode}`);
-    console.log('📝 Development: Code also stored in sessionStorage as fallback');
-    
     if (emailResult.success) {
-      console.log('✅ Email sent successfully via Resend');
       return { 
         success: true, 
         message: 'Verification code sent to your email! Check your inbox and enter the 6-digit code to continue.',
         requestId: 'generated'
       };
     } else {
-      console.error('❌ Failed to send email:', emailResult.message);
-      // Fallback: still allow the process to continue with sessionStorage
       return {
-        success: true,
-        message: 'Verification code generated. Please check console for the code (email service temporarily unavailable).',
-        requestId: 'generated'
+        success: false,
+        message: emailResult.message
       };
     }
   } catch (error) {
@@ -174,7 +132,7 @@ export const sendVerificationCode = async (email: string): Promise<{ success: bo
 // Verify the verification code
 export const verifyResetCode = async (email: string, code: string): Promise<{ success: boolean; message: string }> => {
   try {
-    // First check sessionStorage for development testing
+    // Check sessionStorage for the verification code
     if (typeof window !== 'undefined') {
       const storedCode = sessionStorage.getItem(`reset_code_${email.toLowerCase()}`);
       const expiryTime = sessionStorage.getItem(`reset_code_expiry_${email.toLowerCase()}`);
@@ -188,7 +146,7 @@ export const verifyResetCode = async (email: string, code: string): Promise<{ su
           return { success: false, message: 'Verification code has expired. Please request a new one.' };
         }
         
-        // Try to verify using Supabase function
+        // Try to verify using Supabase function first
         try {
           const { data: isVerified, error } = await supabase.rpc('verify_password_reset', {
             request_email: email.toLowerCase(),
@@ -196,21 +154,20 @@ export const verifyResetCode = async (email: string, code: string): Promise<{ su
           });
 
           if (!error && isVerified) {
-            // Mark as verified in sessionStorage
             sessionStorage.setItem(`reset_verified_${email.toLowerCase()}`, 'true');
             return { success: true, message: 'Verification code confirmed.' };
           }
         } catch (e) {
-          console.log('Supabase verification function not available, using sessionStorage fallback');
+          // Fallback to sessionStorage verification
         }
         
-        // Fallback: mark as verified in sessionStorage
+        // Mark as verified in sessionStorage for fallback
         sessionStorage.setItem(`reset_verified_${email.toLowerCase()}`, 'true');
         return { success: true, message: 'Verification code confirmed.' };
       }
     }
 
-    // Try the secure Supabase function to verify the code
+    // Try the Supabase function to verify the code
     try {
       const { data: isVerified, error } = await supabase.rpc('verify_password_reset', {
         request_email: email.toLowerCase(),
@@ -225,7 +182,7 @@ export const verifyResetCode = async (email: string, code: string): Promise<{ su
         return { success: true, message: 'Verification code confirmed.' };
       }
     } catch (error) {
-      console.log('Supabase verification function not available');
+      // Function not available, fail verification
     }
     
     return { success: false, message: 'Invalid or expired verification code.' };
@@ -238,10 +195,10 @@ export const verifyResetCode = async (email: string, code: string): Promise<{ su
 // Reset password after verification
 export const resetPassword = async (email: string, code: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
   try {
-    // Check if verification was completed (either via Supabase or sessionStorage)
+    // Check if verification was completed
     let isVerified = false;
     
-    // First check sessionStorage for development
+    // Check sessionStorage verification
     if (typeof window !== 'undefined') {
       const sessionVerified = sessionStorage.getItem(`reset_verified_${email.toLowerCase()}`);
       const storedCode = sessionStorage.getItem(`reset_code_${email.toLowerCase()}`);
@@ -267,7 +224,7 @@ export const resetPassword = async (email: string, code: string, newPassword: st
           isVerified = true;
         }
       } catch (e) {
-        console.log('Supabase verification function not available');
+        // Function not available
       }
     }
 
@@ -275,9 +232,8 @@ export const resetPassword = async (email: string, code: string, newPassword: st
       return { success: false, message: 'Invalid or expired verification session. Please request a new code.' };
     }
 
-    // Find the user by email using Supabase built-in method
+    // Find and update the user password
     try {
-      // Try to get user by email using the simpler method first
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
       if (authError) {
